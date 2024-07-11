@@ -1,0 +1,72 @@
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
+#define SERVICE_UUID_TEMPERATURE "1809" // UUID for Health Thermometer Service
+#define CHARACTERISTIC_UUID_TEMPERATURE "2A1C" // UUID for Temperature Measurement
+
+#define SERVICE_UUID_HUMIDITY "181A" // UUID for Environmental Sensing Service
+#define CHARACTERISTIC_UUID_HUMIDITY "2A6F" // UUID for Humidity Measurement
+
+BLECharacteristic *pTemperatureCharacteristic;
+BLECharacteristic *pHumidityCharacteristic;
+
+void setup() {
+  Serial.begin(115200);
+
+  BLEDevice::init("ESP32_BLE_Device");
+  BLEServer *pServer = BLEDevice::createServer();
+
+  BLEService *pTemperatureService = pServer->createService(SERVICE_UUID_TEMPERATURE);
+  pTemperatureCharacteristic = pTemperatureService->createCharacteristic(
+                                  CHARACTERISTIC_UUID_TEMPERATURE,
+                                  BLECharacteristic::PROPERTY_READ |
+                                  BLECharacteristic::PROPERTY_NOTIFY
+                                );
+  pTemperatureService->start();
+
+  BLEService *pHumidityService = pServer->createService(SERVICE_UUID_HUMIDITY);
+  pHumidityCharacteristic = pHumidityService->createCharacteristic(
+                              CHARACTERISTIC_UUID_HUMIDITY,
+                              BLECharacteristic::PROPERTY_READ |
+                              BLECharacteristic::PROPERTY_NOTIFY
+                            );
+  pHumidityService->start();
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID_TEMPERATURE);
+  pAdvertising->addServiceUUID(SERVICE_UUID_HUMIDITY);
+  pAdvertising->start();
+
+  Serial.println("Waiting for a client connection to notify...");
+}
+
+void loop() 
+{
+  float temperature = getSimulatedTemperature();
+  float humidity = getSimulatedHumidity();
+
+  pTemperatureCharacteristic->setValue(temperature);
+  pHumidityCharacteristic->setValue(humidity);
+
+  pTemperatureCharacteristic->notify();
+  pHumidityCharacteristic->notify();
+
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.print(" °C, Humidity: ");
+  Serial.print(humidity);
+  Serial.println(" %");
+
+  delay(1000); // Update every second
+}
+
+float getSimulatedTemperature() 
+{
+  return 25.0 + (rand() % 100) / 10.0; // Example: 25.0 to 35.0 °C
+}
+
+float getSimulatedHumidity() 
+{
+  return 50.0 + (rand() % 100) / 10.0; // Example: 50.0 to 60.0 %
+}
